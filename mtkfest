@@ -1,0 +1,87 @@
+#!/bin/sh
+
+cpu_cores=$(($(nproc --all) - 1))
+
+# CPU Governor
+cpu=0
+while [ $cpu -lt $cpu_cores ]; do
+	cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+	if [ -d "$cpu_dir" ]; then
+		chmod 0644 "${cpu_dir}/cpufreq/scaling_governor"
+		echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
+	fi
+	cpu=$((cpu + 1))
+done
+
+# Disable PPM (this is fire dumpster)
+if [ -d /proc/ppm ]; then
+	echo 0 >/proc/ppm/enabled
+fi
+
+# MTK Power and CCI mode
+if [ -d /proc/cpufreq ]; then
+	echo 1 >/proc/cpufreq/cpufreq_cci_mode
+	echo 3 >/proc/cpufreq/cpufreq_power_mode
+fi
+
+# GPU Frequency
+if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+	gpu_freq=$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)
+	echo $gpu_freq >/proc/gpufreq/gpufreq_opp_freq
+else
+	gpu_freq=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk '{print $3}' | sed 's/,//g' | sort -nr | head -n 1)
+	gpu_volt=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk -v freq="$freq" '$0 ~ freq {gsub(/.*, volt: /, ""); gsub(/,.*/, ""); print}')
+	echo $gpu_freq $gpu_volt >/proc/gpufreqv2/fix_custom_freq_volt
+fi
+
+# GED Parameters
+
+# Disable GPU Power limiter
+if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
+	echo "ignore_batt_oc 1" >/proc/gpufreq/gpufreq_power_limited
+	echo "ignore_batt_percent 1" >/proc/gpufreq/gpufreq_power_limited
+	echo "ignore_low_batt 1" >/proc/gpufreq/gpufreq_power_limited
+	echo "ignore_thermal_protect 1" >/proc/gpufreq/gpufreq_power_limited
+	echo "ignore_pbm_limited 1" >/proc/gpufreq/gpufreq_power_limited
+fi
+
+# GPU Power policy
+
+# Disable Power Budget management for new 5.x kernels
+if [ -d /proc/pbm ]; then
+	echo "stop 1" >/proc/pbm/pbm_stop
+fi
+
+# Disable battery current limiter
+if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
+	echo "stop 1" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
+fi
+
+# DRAM Frequency
+if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+	echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+else
+	echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+fi
+
+# Mediatek's APU freq
+if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
+	echo "0" >/sys/module/mmdvfs_pmqos/parameters/force_step
+fi
+
+# Networking tweaks
+echo "cubic" >/proc/sys/net/ipv4/tcp_congestion_control
+echo 1 >/proc/sys/net/ipv4/tcp_low_latency
+echo 1 >/proc/sys/net/ipv4/tcp_ecn
+echo 3 >/proc/sys/net/ipv4/tcp_fastopen
+echo 1 >/proc/sys/net/ipv4/tcp_sack
+echo 0 >/proc/sys/net/ipv4/tcp_timestamps
+
+# Thermal governor
+chmod 0644 /sys/class/thermal/thermal_zone0/available_policies
+if [[ $(cat /sys/class/thermal/thermal_zone0/available_policies) == *step_wise* ]]; then
+	for thermal in /sys/class/thermal/thermal_zone*; do
+		chmod 0644 ${thermal}/policy
+		echo "step_wise" >${thermal}/policy
+	done
+fi
