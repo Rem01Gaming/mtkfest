@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# No thief
+if [ ! -d /data/adb/modules/mtkfest ]; then
+	echo "[*] Kanging other module script is sad"
+fi
+
 cpu_cores=$(($(nproc --all) - 1))
 
 # CPU Governor
