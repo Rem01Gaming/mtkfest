@@ -91,3 +91,6 @@ if [[ $(cat /sys/class/thermal/thermal_zone0/available_policies) == *step_wise* 
 		echo "step_wise" >${thermal}/policy
 	done
 fi
+
+# Push notification
+su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"MTKFEST\" "Tag$(date +%s)" \"Tweaks applied successfully\"" < /dev/null > /dev/null 2>&1 || :
