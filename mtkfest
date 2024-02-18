@@ -27,6 +27,9 @@ performance_mode() {
 		echo 3 >/proc/cpufreq/cpufreq_power_mode
 	fi
 
+	# Idle charging
+	echo "0 1" >/proc/mtk_battery_cmd/current_cmd
+
 	# Disable PPM (this is fire dumpster)
 	if [ -d /proc/ppm ]; then
 		echo 0 >/proc/ppm/enabled
@@ -79,6 +82,9 @@ normal_mode() {
 		fi
 		cpu=$((cpu + 1))
 	done
+
+	# Idle charging
+	echo "0 0" >/proc/mtk_battery_cmd/current_cmd
 
 	if [ -d /proc/ppm ]; then
 		echo 1 >/proc/ppm/enabled
