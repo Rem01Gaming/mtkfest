@@ -61,3 +61,7 @@ jp.konami.pesam
 com.ea.gp.fifamobile
 com.mobilelegends.hwag
 com.dfjz.moba
+com.mojang.minecraftpe
+com.mojang.minecraftpe.patch
+com.netease.newspike
+skynet.cputhrottlingtest
