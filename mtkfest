@@ -27,6 +27,11 @@ performance_mode() {
 		echo 3 >/proc/cpufreq/cpufreq_power_mode
 	fi
 
+	# Disable PPM (this is fire dumpster)
+	if [ -d /proc/ppm ]; then
+		echo 0 >/proc/ppm/enabled
+	fi
+
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
 		gpu_freq=$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)
@@ -75,7 +80,6 @@ normal_mode() {
 		cpu=$((cpu + 1))
 	done
 
-	# Disable PPM (this is fire dumpster)
 	if [ -d /proc/ppm ]; then
 		echo 1 >/proc/ppm/enabled
 	fi
@@ -152,11 +156,6 @@ perf_common() {
 		fi
 		cpu=$((cpu + 1))
 	done
-
-	# Disable PPM (this is fire dumpster)
-	if [ -d /proc/ppm ]; then
-		echo 0 >/proc/ppm/enabled
-	fi
 
 	# Networking tweaks
 	echo "cubic" >/proc/sys/net/ipv4/tcp_congestion_control
