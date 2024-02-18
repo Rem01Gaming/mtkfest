@@ -1,99 +1,198 @@
 #!/bin/sh
 
 # No thief
+# Don't use $0 because it's replaced by ssc
 if [ ! -d /data/adb/modules/mtkfest ]; then
 	echo "[*] Kanging other module script is sad"
+	exit 1
 fi
 
 cpu_cores=$(($(nproc --all) - 1))
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/adb/modules/mtkfest/gamelist.txt")"
 
-# CPU tweaks
-cpu=0
-while [ $cpu -lt $cpu_cores ]; do
-	cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
-	if [ -d "$cpu_dir" ]; then
-		echo 1 >${cpu_dir}/online
-		chmod 0644 "${cpu_dir}/cpufreq/scaling_governor"
-		chmod 000 "${cpu_dir}/cpufreq/cpuinfo_max_freq"
-		chmod 000 "${cpu_dir}/cpu_capacity"
-		chmod 000 "${cpu_dir}/topology/physical_package_id"
-		echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
-	fi
-	cpu=$((cpu + 1))
-done
-
-# Disable PPM (this is fire dumpster)
-if [ -d /proc/ppm ]; then
-	echo 0 >/proc/ppm/enabled
-fi
-
-# MTK Power and CCI mode
-if [ -d /proc/cpufreq ]; then
-	echo 1 >/proc/cpufreq/cpufreq_cci_mode
-	echo 3 >/proc/cpufreq/cpufreq_power_mode
-fi
-
-# GPU Frequency
-if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-	gpu_freq=$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)
-	echo $gpu_freq >/proc/gpufreq/gpufreq_opp_freq
-else
-	gpu_freq=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk '{print $3}' | sed 's/,//g' | sort -nr | head -n 1)
-	gpu_volt=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk -v freq="$freq" '$0 ~ freq {gsub(/.*, volt: /, ""); gsub(/,.*/, ""); print}')
-	echo $gpu_freq $gpu_volt >/proc/gpufreqv2/fix_custom_freq_volt
-fi
-
-# GED Parameters
-
-# Disable GPU Power limiter
-if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
-	echo "ignore_batt_oc 1" >/proc/gpufreq/gpufreq_power_limited
-	echo "ignore_batt_percent 1" >/proc/gpufreq/gpufreq_power_limited
-	echo "ignore_low_batt 1" >/proc/gpufreq/gpufreq_power_limited
-	echo "ignore_thermal_protect 1" >/proc/gpufreq/gpufreq_power_limited
-	echo "ignore_pbm_limited 1" >/proc/gpufreq/gpufreq_power_limited
-fi
-
-# GPU Power policy
-
-# Disable Power Budget management for new 5.x kernels
-if [ -d /proc/pbm ]; then
-	echo "stop 1" >/proc/pbm/pbm_stop
-fi
-
-# Disable battery current limiter
-if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
-	echo "stop 1" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
-fi
-
-# DRAM Frequency
-if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-	echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-else
-	echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-fi
-
-# Mediatek's APU freq
-if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
-	echo "0" >/sys/module/mmdvfs_pmqos/parameters/force_step
-fi
-
-# Networking tweaks
-echo "cubic" >/proc/sys/net/ipv4/tcp_congestion_control
-echo 1 >/proc/sys/net/ipv4/tcp_low_latency
-echo 1 >/proc/sys/net/ipv4/tcp_ecn
-echo 3 >/proc/sys/net/ipv4/tcp_fastopen
-echo 1 >/proc/sys/net/ipv4/tcp_sack
-echo 0 >/proc/sys/net/ipv4/tcp_timestamps
-
-# Thermal governor
-chmod 0644 /sys/class/thermal/thermal_zone0/available_policies
-if [[ $(cat /sys/class/thermal/thermal_zone0/available_policies) == *step_wise* ]]; then
-	for thermal in /sys/class/thermal/thermal_zone*; do
-		chmod 0644 ${thermal}/policy
-		echo "step_wise" >${thermal}/policy
+performance_mode() {
+	# CPU tweaks
+	cpu=0
+	while [ $cpu -lt $cpu_cores ]; do
+		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+		if [ -d "$cpu_dir" ]; then
+			echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
+		fi
+		cpu=$((cpu + 1))
 	done
-fi
 
-# Push notification
-su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"MTKFEST\" "Tag$(date +%s)" \"Tweaks applied successfully\"" < /dev/null > /dev/null 2>&1 || :
+	# MTK Power and CCI mode
+	if [ -d /proc/cpufreq ]; then
+		echo 1 >/proc/cpufreq/cpufreq_cci_mode
+		echo 3 >/proc/cpufreq/cpufreq_power_mode
+	fi
+
+	# GPU Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		gpu_freq=$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)
+		echo $gpu_freq >/proc/gpufreq/gpufreq_opp_freq
+	else
+		gpu_freq=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk '{print $3}' | sed 's/,//g' | sort -nr | head -n 1)
+		gpu_volt=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk -v freq="$freq" '$0 ~ freq {gsub(/.*, volt: /, ""); gsub(/,.*/, ""); print}')
+		echo $gpu_freq $gpu_volt >/proc/gpufreqv2/fix_custom_freq_volt
+	fi
+
+	# Disable GPU Power limiter
+	if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
+		echo "ignore_batt_oc 1" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_batt_percent 1" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_low_batt 1" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_thermal_protect 1" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_pbm_limited 1" >/proc/gpufreq/gpufreq_power_limited
+	fi
+
+	# Disable battery current limiter
+	if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
+		echo "stop 1" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
+	fi
+
+	# DRAM Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	else
+		echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	fi
+
+	# Mediatek's APU freq
+	if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
+		echo "0" >/sys/module/mmdvfs_pmqos/parameters/force_step
+	fi
+}
+
+normal_mode() {
+	# CPU tweaks
+	cpu=0
+	while [ $cpu -lt $cpu_cores ]; do
+		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+		if [ -d "$cpu_dir" ]; then
+			echo "schedutil" >"${cpu_dir}/cpufreq/scaling_governor"
+		fi
+		cpu=$((cpu + 1))
+	done
+
+	# Disable PPM (this is fire dumpster)
+	if [ -d /proc/ppm ]; then
+		echo 1 >/proc/ppm/enabled
+	fi
+
+	# MTK Power and CCI mode
+	if [ -d /proc/cpufreq ]; then
+		echo 0 >/proc/cpufreq/cpufreq_cci_mode
+		echo 0 >/proc/cpufreq/cpufreq_power_mode
+	fi
+
+	# GPU Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo 0 >/proc/gpufreq/gpufreq_opp_freq 2>/dev/null
+	else
+		echo 0 0 >/proc/gpufreqv2/fix_custom_freq_volt
+	fi
+
+	# Disable GPU Power limiter
+	if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
+		echo "ignore_batt_oc 0" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_batt_percent 0" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_low_batt 0" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_thermal_protect 0" >/proc/gpufreq/gpufreq_power_limited
+		echo "ignore_pbm_limited 0" >/proc/gpufreq/gpufreq_power_limited
+	fi
+
+	# Disable Power Budget management for new 5.x kernels
+	if [ -d /proc/pbm ]; then
+		echo "stop 0" >/proc/pbm/pbm_stop
+	fi
+
+	# Disable battery current limiter
+	if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
+		echo "stop 0" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
+	fi
+
+	# DRAM Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo -1 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	else
+		echo -1 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	fi
+
+	# Mediatek's APU freq
+	if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
+		echo "-1" >/sys/module/mmdvfs_pmqos/parameters/force_step
+	fi
+}
+
+apply_mode() {
+	if [[ $1 == 1 ]] && [[ ! $cur_mode == 1 ]]; then
+		export cur_mode=1
+		renice -n -20 -p $pid
+		ionice -c 2 -n 0 -p $pid
+		/system/bin/am start -a android.intent.action.MAIN -e toasttext "Boosting game $gamestart" -n bellavita.toast/.MainActivity
+		performance_mode
+	elif [[ $1 == 0 ]] && [[ ! $cur_mode == 0 ]]; then
+		export cur_mode=0
+		normal_mode
+	fi
+}
+
+perf_common() {
+	# CPU tweaks
+	cpu=0
+	while [ $cpu -lt $cpu_cores ]; do
+		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
+		if [ -d "$cpu_dir" ]; then
+			echo 1 >${cpu_dir}/online
+			chmod 0644 "${cpu_dir}/cpufreq/scaling_governor"
+			chmod 000 "${cpu_dir}/cpufreq/cpuinfo_max_freq"
+			chmod 000 "${cpu_dir}/cpu_capacity"
+			chmod 000 "${cpu_dir}/topology/physical_package_id"
+		fi
+		cpu=$((cpu + 1))
+	done
+
+	# Disable PPM (this is fire dumpster)
+	if [ -d /proc/ppm ]; then
+		echo 0 >/proc/ppm/enabled
+	fi
+
+	# Networking tweaks
+	echo "cubic" >/proc/sys/net/ipv4/tcp_congestion_control
+	echo 1 >/proc/sys/net/ipv4/tcp_low_latency
+	echo 1 >/proc/sys/net/ipv4/tcp_ecn
+	echo 3 >/proc/sys/net/ipv4/tcp_fastopen
+	echo 1 >/proc/sys/net/ipv4/tcp_sack
+	echo 0 >/proc/sys/net/ipv4/tcp_timestamps
+
+	# Thermal governor
+	chmod 0644 /sys/class/thermal/thermal_zone0/available_policies
+	if [[ $(cat /sys/class/thermal/thermal_zone0/available_policies) == *step_wise* ]]; then
+		for thermal in /sys/class/thermal/thermal_zone*; do
+			chmod 0644 ${thermal}/policy
+			echo "step_wise" >${thermal}/policy
+		done
+	fi
+
+	# Push notification
+	su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"MTKFEST\" "Tag$(date +%s)" \"Tweaks applied successfully\""
+}
+
+perfmon() {
+	while true; do
+		window=$(dumpsys window)
+		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
+		screenoff=$(echo "$window" | grep mScreen | grep -Eo "false" | tail -n 1)
+		if [[ $gamestart == *.* ]] && [[ ! $screenoff == "false" ]]; then
+			pid=$(pidof $gamestart)
+			apply_mode 1 # Apply performance mode
+		else
+			apply_mode 0 # Apply normal mode
+		fi
+		sleep 10
+	done
+}
+
+perf_common
+perfmon # Start monitoring for games
