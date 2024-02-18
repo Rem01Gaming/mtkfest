@@ -2,4 +2,4 @@
 while [ -z "$(getprop sys.boot_completed)" ]; do
     sleep 15
 done
-/data/adb/modules/mtkfest/mtkfest > /dev/null 2>&1
+mtkfest >/dev/null 2>&1
