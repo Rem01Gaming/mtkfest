@@ -2,7 +2,7 @@
 
 # No thief
 # Don't use $0 because it's replaced by ssc
-if [ ! -d /data/adb/modules/mtkfest ]; then
+if ! hash mtkfest 2>/dev/null; then
 	echo "[*] Kanging other module script is sad"
 	exit 1
 fi
