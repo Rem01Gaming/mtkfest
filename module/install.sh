@@ -33,9 +33,10 @@ fi
 sleep 1
 
 ui_print "- Extracting module files"
+mkdir /data/mtkfest
 unzip -o "$ZIPFILE" 'system/*' -d $MODPATH >&2
 unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
-unzip -o "$ZIPFILE" 'gamelist.txt' -d "$MODPATH" >&2
+unzip -o "$ZIPFILE" 'gamelist.txt' -d "/data/mtkfest" >&2
 
 ui_print "- Installing bellavita toast"
 unzip -o "$ZIPFILE" 'toast.apk' -d $MODPATH >&2

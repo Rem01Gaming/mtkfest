@@ -8,7 +8,7 @@ if ! hash mtkfest 2>/dev/null; then
 fi
 
 cpu_cores=$(($(nproc --all) - 1))
-game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/adb/modules/mtkfest/gamelist.txt")"
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/mtkfest/gamelist.txt")"
 
 performance_mode() {
 	# CPU tweaks
@@ -199,5 +199,10 @@ perfmon() {
 	done
 }
 
-perf_common
-perfmon # Start monitoring for games
+case $1 in
+"-u") wget -O /data/mtkfest/gamelist.txt https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt ;;
+*)
+	perf_common
+	perfmon # Start monitoring for games
+	;;
+esac
