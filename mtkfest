@@ -16,6 +16,21 @@ write_val() {
 	fi
 }
 
+lock_val() {
+	[ ! -f "$2" ] && return
+	umount "$2"
+
+	chown root:root "$2"
+	chmod 0666 "$2"
+	echo "$1" >"$2"
+	chmod 0444 "$2"
+
+	local TIME=$(date +"%s%N")
+	echo "$1" >/dev/mount_mask_$TIME
+	mount --bind /dev/mount_mask_$TIME "$2"
+	rm /dev/mount_mask_$TIME
+}
+
 performance_mode() {
 	# CPU tweaks
 	cpu=0
@@ -30,6 +45,9 @@ performance_mode() {
 	# MTK Power and CCI mode
 	write_val 1 /proc/cpufreq/cpufreq_cci_mode
 	write_val 3 /proc/cpufreq/cpufreq_power_mode
+
+	# EAS/HMP Switch
+	lock_val 0 /sys/devices/system/cpu/eas/enable
 
 	# Idle charging
 	write_val "0 1" /proc/mtk_battery_cmd/current_cmd
@@ -94,6 +112,9 @@ normal_mode() {
 	# MTK Power and CCI mode
 	write_val 0 /proc/cpufreq/cpufreq_cci_mode
 	write_val 0 /proc/cpufreq/cpufreq_power_mode
+
+	# EAS/HMP Switch
+	lock_val 1 /sys/devices/system/cpu/eas/enable
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
