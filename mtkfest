@@ -10,6 +10,12 @@ fi
 cpu_cores=$(($(nproc --all) - 1))
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/mtkfest/gamelist.txt")"
 
+write_val() {
+	if [ -f $2 ]; then
+		echo $1 >$2
+	fi
+}
+
 performance_mode() {
 	# CPU tweaks
 	cpu=0
@@ -22,18 +28,14 @@ performance_mode() {
 	done
 
 	# MTK Power and CCI mode
-	if [ -d /proc/cpufreq ]; then
-		echo 1 >/proc/cpufreq/cpufreq_cci_mode
-		echo 3 >/proc/cpufreq/cpufreq_power_mode
-	fi
+	write_val 1 /proc/cpufreq/cpufreq_cci_mode
+	write_val 3 /proc/cpufreq/cpufreq_power_mode
 
 	# Idle charging
-	echo "0 1" >/proc/mtk_battery_cmd/current_cmd
+	write_val "0 1" /proc/mtk_battery_cmd/current_cmd
 
 	# Disable PPM (this is fire dumpster)
-	if [ -d /proc/ppm ]; then
-		echo 0 >/proc/ppm/enabled
-	fi
+	write_val 0 /proc/ppm/enabled
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -55,9 +57,7 @@ performance_mode() {
 	fi
 
 	# Disable battery current limiter
-	if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
-		echo "stop 1" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
-	fi
+	write_val "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -67,18 +67,11 @@ performance_mode() {
 	fi
 
 	# Mediatek's APU freq
-	if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
-		echo "0" >/sys/module/mmdvfs_pmqos/parameters/force_step
-	fi
+	write_val 0 /sys/module/mmdvfs_pmqos/parameters/force_step
 
 	# Touchpanel
-	if [ -f /proc/touchpanel/game_switch_enable ]; then
-		echo 1 >/proc/touchpanel/game_switch_enable
-	fi
-
-	if [ -f /proc/touchpanel/oplus_tp_limit_enable ]; then
-		echo 0 >/proc/touchpanel/oplus_tp_limit_enable
-	fi
+	write_val 1 /proc/touchpanel/game_switch_enable
+	write_val 0 /proc/touchpanel/oplus_tp_limit_enable
 }
 
 normal_mode() {
@@ -93,17 +86,14 @@ normal_mode() {
 	done
 
 	# Idle charging
-	echo "0 0" >/proc/mtk_battery_cmd/current_cmd
+	write_val "0 0" /proc/mtk_battery_cmd/current_cmd
 
-	if [ -d /proc/ppm ]; then
-		echo 1 >/proc/ppm/enabled
-	fi
+	# Enable back PPM
+	write_val 1 /proc/ppm/enabled
 
 	# MTK Power and CCI mode
-	if [ -d /proc/cpufreq ]; then
-		echo 0 >/proc/cpufreq/cpufreq_cci_mode
-		echo 0 >/proc/cpufreq/cpufreq_power_mode
-	fi
+	write_val 0 /proc/cpufreq/cpufreq_cci_mode
+	write_val 0 /proc/cpufreq/cpufreq_power_mode
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -122,14 +112,10 @@ normal_mode() {
 	fi
 
 	# Disable Power Budget management for new 5.x kernels
-	if [ -d /proc/pbm ]; then
-		echo "stop 0" >/proc/pbm/pbm_stop
-	fi
+	write_val "stop 0" /proc/pbm/pbm_stop
 
 	# Disable battery current limiter
-	if [ -f /proc/mtk_batoc_throttling/battery_oc_protect_stop ]; then
-		echo "stop 0" >/proc/mtk_batoc_throttling/battery_oc_protect_stop
-	fi
+	write_val "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -139,18 +125,11 @@ normal_mode() {
 	fi
 
 	# Mediatek's APU freq
-	if [ -f /sys/module/mmdvfs_pmqos/parameters/force_step ]; then
-		echo "-1" >/sys/module/mmdvfs_pmqos/parameters/force_step
-	fi
+	write_val -1 /sys/module/mmdvfs_pmqos/parameters/force_step
 
 	# Touchpanel
-	if [ -f /proc/touchpanel/game_switch_enable ]; then
-		echo 0 >/proc/touchpanel/game_switch_enable
-	fi
-
-	if [ -f /proc/touchpanel/oplus_tp_limit_enable ]; then
-		echo 1 >/proc/touchpanel/oplus_tp_limit_enable
-	fi
+	write_val 0 /proc/touchpanel/game_switch_enable
+	write_val 1 /proc/touchpanel/oplus_tp_limit_enable
 }
 
 apply_mode() {
@@ -190,14 +169,10 @@ perf_common() {
 	echo 0 >/proc/sys/net/ipv4/tcp_timestamps
 
 	# Touchpanel
-	if [ -f /proc/touchpanel/oplus_tp_direction ]; then
-		echo 1 >/proc/touchpanel/oplus_tp_direction
-	fi
+	write_val 1 /proc/touchpanel/oplus_tp_direction
 
-	# Disable some debugging
-	if [ -f /sys/kernel/ccci/debug ]; then
-		echo 0 >/sys/kernel/ccci/debug
-	fi
+	# Disable ccci debugging
+	write_val 0 /sys/kernel/ccci/debug
 
 	# Thermal governor
 	chmod 0644 /sys/class/thermal/thermal_zone0/available_policies
