@@ -99,22 +99,10 @@ performance_mode() {
 	# Touchpanel
         tp_path="/proc/touchpanel"
 	write_val "1" $tp_path/game_switch_enable
-
-        if [[ -e "$tp_path/oplus_tp_limit_enable" ]]; then
 	write_val "0" $tp_path/oplus_tp_limit_enable
-        fi
-
-        if [[ -e "$tp_path/oppo_tp_limit_enable" ]]; then
         write_val "0" $tp_path/oppo_tp_limit_enable
-        fi
-
-       if [[ -e "$tp_path/oplus_tp_direction" ]]; then
-       write_val "1" $tp_path/oplus_tp_direction
-       fi
-
-       if [[ -e "$tp_path/oppo_tp_direction" ]]; then
-       write_val "1" $tp_path/oppo_tp_direction
-       fi
+        write_val "1" $tp_path/oplus_tp_direction
+        write_val "1" $tp_path/oppo_tp_direction
 }
 
 normal_mode() {
@@ -184,24 +172,11 @@ normal_mode() {
 	# Touchpanel
 	tp_path="/proc/touchpanel"
 	write_val "0" $tp_path/game_switch_enable
-
-        if [[ -e "$tp_path/oplus_tp_limit_enable" ]]; then
 	write_val "1" $tp_path/oplus_tp_limit_enable
-        fi
-
-        if [[ -e "$tp_path/oppo_tp_limit_enable" ]]; then
         write_val "1" $tp_path/oppo_tp_limit_enable
-        fi
-
-       if [[ -e "$tp_path/oplus_tp_direction" ]]; then
-       write_val "0" $tp_path/oplus_tp_direction
-       fi
-
-       if [[ -e "$tp_path/oppo_tp_direction" ]]; then
-       write_val "0" $tp_path/oppo_tp_direction
-       fi
+        write_val "0" $tp_path/oplus_tp_direction
+        write_val "0" $tp_path/oppo_tp_direction
 }
-
 apply_mode() {
 	if [[ "$1" == "1" ]] && [[ ! "$cur_mode" == "1" ]]; then
 		export cur_mode="1"
