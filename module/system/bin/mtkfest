@@ -178,6 +178,23 @@ normal_mode() {
 	write_val "0" $tp_path/oppo_tp_direction
 }
 
+powersave_mode() {
+	normal_mode
+
+	# DRAM Frequency
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
+		echo "0" >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	else
+		echo "0" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	fi
+
+	# Mediatek's APU freq
+	write_val "0" /sys/module/mmdvfs_pmqos/parameters/force_step
+
+	# CPU Power mode to low power
+	write_val "1" /proc/cpufreq/cpufreq_power_mode
+}
+
 apply_mode() {
 	if [[ "$1" == "1" ]] && [[ ! "$cur_mode" == "1" ]]; then
 		export cur_mode="1"
@@ -185,6 +202,9 @@ apply_mode() {
 		ionice -c 2 -n 0 -p $pid
 		/system/bin/am start -a android.intent.action.MAIN -e toasttext "Boosting game $gamestart" -n bellavita.toast/.MainActivity
 		performance_mode
+	elif [[ "$1" == "2" ]] && [[ ! "$cur_mode" == "2" ]]; then
+		export cur_mode="2"
+		powersave_mode
 	elif [[ "$1" == "0" ]] && [[ ! "$cur_mode" == "0" ]]; then
 		export cur_mode="0"
 		normal_mode
@@ -238,6 +258,8 @@ perfmon() {
 		if [[ $gamestart == *.* ]] && [[ ! $screenoff == "false" ]]; then
 			pid="$(pidof $gamestart)"
 			apply_mode 1 # Apply performance mode
+		elif [[ "$(settings get global low_power_sticky)" == "1" ]]; then
+			apply_mode 2 # Apply powersave mode
 		else
 			apply_mode 0 # Apply normal mode
 		fi
