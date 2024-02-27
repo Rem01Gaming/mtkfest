@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/data/adb/magisk/busybox sh
 # This file is part of Mtkfest.
 #
 # Mtkfest is free software: you can redistribute it and/or modify
@@ -16,7 +16,7 @@
 #
 # Copyright (C) 2024 Rem01Gaming
 
-cpu_cores=$(($(nproc --all) - 1))
+cpu_cores="$(($(nproc --all) - 1))"
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/mtkfest/gamelist.txt")"
 
 write_val() {
@@ -42,98 +42,122 @@ lock_val() {
 
 performance_mode() {
 	# CPU tweaks
-	cpu=0
+	cpu="0"
 	while [ $cpu -lt $cpu_cores ]; do
 		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
 		if [ -d "$cpu_dir" ]; then
-			echo "performance" >"${cpu_dir}/cpufreq/scaling_governor"
+			echo "performance" > "${cpu_dir}/cpufreq/scaling_governor"
 		fi
-		cpu=$((cpu + 1))
+		cpu="$((cpu + 1))"
 	done
 
 	# MTK Power and CCI mode
-	write_val 1 /proc/cpufreq/cpufreq_cci_mode
-	write_val 3 /proc/cpufreq/cpufreq_power_mode
+	write_val "1" /proc/cpufreq/cpufreq_cci_mode
+	write_val "3" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	lock_val 0 /sys/devices/system/cpu/eas/enable
+	lock_val "0" /sys/devices/system/cpu/eas/enable
 
 	# Idle charging
 	write_val "0 1" /proc/mtk_battery_cmd/current_cmd
 
 	# Disable PPM (this is fire dumpster)
-	write_val 0 /proc/ppm/enabled
+	write_val "0" /proc/ppm/enabled
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		gpu_freq=$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)
-		echo $gpu_freq >/proc/gpufreq/gpufreq_opp_freq
+		gpu_freq="$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -nr | head -n 1)"
+		echo "$gpu_freq" > /proc/gpufreq/gpufreq_opp_freq
 	else
-		gpu_freq=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk '{print $3}' | sed 's/,//g' | sort -nr | head -n 1)
-		gpu_volt=$(cat /proc/gpufreqv2/gpu_working_opp_table | awk -v freq="$freq" '$0 ~ freq {gsub(/.*, volt: /, ""); gsub(/,.*/, ""); print}')
-		echo $gpu_freq $gpu_volt >/proc/gpufreqv2/fix_custom_freq_volt
+		gpu_freq="$(cat /proc/gpufreqv2/gpu_working_opp_table | awk '{print $3}' | sed 's/,//g' | sort -nr | head -n 1)"
+		gpu_volt="$(cat /proc/gpufreqv2/gpu_working_opp_table | awk -v freq="$freq" '$0 ~ freq {gsub(/.*, volt: /, ""); gsub(/,.*/, ""); print}')"
+		echo "${gpu_freq} ${gpu_volt}" >/proc/gpufreqv2/fix_custom_freq_volt
 	fi
 
 	# Disable GPU Power limiter
-	if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
-		echo "ignore_batt_oc 1" >/proc/gpufreq/gpufreq_power_limited
-		echo "ignore_batt_percent 1" >/proc/gpufreq/gpufreq_power_limited
-		echo "ignore_low_batt 1" >/proc/gpufreq/gpufreq_power_limited
-		echo "ignore_thermal_protect 1" >/proc/gpufreq/gpufreq_power_limited
-		echo "ignore_pbm_limited 1" >/proc/gpufreq/gpufreq_power_limited
+	if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
+		echo "ignore_batt_oc 1" > /proc/gpufreq/gpufreq_power_limited
+		echo "ignore_batt_percent 1" > /proc/gpufreq/gpufreq_power_limited
+		echo "ignore_low_batt 1" > /proc/gpufreq/gpufreq_power_limited
+		echo "ignore_thermal_protect 1" > /proc/gpufreq/gpufreq_power_limited
+		echo "ignore_pbm_limited 1" > /proc/gpufreq/gpufreq_power_limited
 	fi
 
 	# Disable battery current limiter
 	write_val "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
-	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		echo 0 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500]; then
+		echo "0" >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	else
-		echo 0 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+		echo "0" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
 
 	# Mediatek's APU freq
-	write_val 0 /sys/module/mmdvfs_pmqos/parameters/force_step
+	write_val "0" /sys/module/mmdvfs_pmqos/parameters/force_step
 
 	# Touchpanel
-	write_val 1 /proc/touchpanel/game_switch_enable
-	write_val 0 /proc/touchpanel/oplus_tp_limit_enable
+        tp_path="/proc/touchpanel"
+	write_val "1" $tp_path/game_switch_enable
+
+        if [[ -e "$tp_path/oplus_tp_limit_enable" ]]; then
+	write_val "0" $tp_path/oplus_tp_limit_enable
+        fi
+
+        if [[ -e "$tp_path/oppo_tp_limit_enable" ]]; then
+        write_val "0" $tp_path/oppo_tp_limit_enable
+        fi
+
+       if [[ -e "$tp_path/oplus_tp_direction" ]]; then
+       write_val "1" $tp_path/oplus_tp_direction
+       fi
+
+       if [[ -e "$tp_path/oppo_tp_direction" ]]; then
+       write_val "1" $tp_path/oppo_tp_direction
+       fi
 }
 
 normal_mode() {
 	# CPU tweaks
-	cpu=0
+	cpu="0"
+
+        # add support for MT6765, by @eraselk
+        if [[ "$(getprop ro.hardware)" == "mt6765" ]] && [[ "$(getprop ro.product.brand)" == "realme" ]]; then
+        cpu_gov="schedplus"
+        else
+        cpu_gov="schedutil"
+        fi
+
 	while [ $cpu -lt $cpu_cores ]; do
 		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
 		if [ -d "$cpu_dir" ]; then
-			echo "schedutil" >"${cpu_dir}/cpufreq/scaling_governor"
+			echo "$cpu_gov" >"${cpu_dir}/cpufreq/scaling_governor"
 		fi
-		cpu=$((cpu + 1))
+		cpu="$((cpu + 1))"
 	done
 
 	# Idle charging
 	write_val "0 0" /proc/mtk_battery_cmd/current_cmd
 
 	# Enable back PPM
-	write_val 1 /proc/ppm/enabled
+	write_val "1" /proc/ppm/enabled
 
 	# MTK Power and CCI mode
-	write_val 0 /proc/cpufreq/cpufreq_cci_mode
-	write_val 0 /proc/cpufreq/cpufreq_power_mode
+	write_val "0" /proc/cpufreq/cpufreq_cci_mode
+	write_val "0" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	lock_val 1 /sys/devices/system/cpu/eas/enable
+	lock_val "1" /sys/devices/system/cpu/eas/enable
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		echo 0 >/proc/gpufreq/gpufreq_opp_freq 2>/dev/null
+		echo "0" >/proc/gpufreq/gpufreq_opp_freq 2>/dev/null
 	else
-		echo 0 0 >/proc/gpufreqv2/fix_custom_freq_volt
+		echo "0 0" >/proc/gpufreqv2/fix_custom_freq_volt
 	fi
 
 	# Disable GPU Power limiter
-	if [ -f /proc/gpufreq/gpufreq_power_limited ]; then
+	if [ -f "/proc/gpufreq/gpufreq_power_limited" ]; then
 		echo "ignore_batt_oc 0" >/proc/gpufreq/gpufreq_power_limited
 		echo "ignore_batt_percent 0" >/proc/gpufreq/gpufreq_power_limited
 		echo "ignore_low_batt 0" >/proc/gpufreq/gpufreq_power_limited
@@ -149,28 +173,44 @@ normal_mode() {
 
 	# DRAM Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		echo -1 >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+		echo "-1" > /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	else
-		echo -1 >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+		echo "-1" > /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
 
 	# Mediatek's APU freq
-	write_val -1 /sys/module/mmdvfs_pmqos/parameters/force_step
+	write_val "-1" /sys/module/mmdvfs_pmqos/parameters/force_step
 
 	# Touchpanel
-	write_val 0 /proc/touchpanel/game_switch_enable
-	write_val 1 /proc/touchpanel/oplus_tp_limit_enable
+	tp_path="/proc/touchpanel"
+	write_val "0" $tp_path/game_switch_enable
+
+        if [[ -e "$tp_path/oplus_tp_limit_enable" ]]; then
+	write_val "1" $tp_path/oplus_tp_limit_enable
+        fi
+
+        if [[ -e "$tp_path/oppo_tp_limit_enable" ]]; then
+        write_val "1" $tp_path/oppo_tp_limit_enable
+        fi
+
+       if [[ -e "$tp_path/oplus_tp_direction" ]]; then
+       write_val "0" $tp_path/oplus_tp_direction
+       fi
+
+       if [[ -e "$tp_path/oppo_tp_direction" ]]; then
+       write_val "0" $tp_path/oppo_tp_direction
+       fi
 }
 
 apply_mode() {
-	if [[ $1 == 1 ]] && [[ ! $cur_mode == 1 ]]; then
-		export cur_mode=1
+	if [[ "$1" == "1" ]] && [[ ! "$cur_mode" == "1" ]]; then
+		export cur_mode="1"
 		renice -n -20 -p $pid
 		ionice -c 2 -n 0 -p $pid
 		/system/bin/am start -a android.intent.action.MAIN -e toasttext "Boosting game $gamestart" -n bellavita.toast/.MainActivity
 		performance_mode
-	elif [[ $1 == 0 ]] && [[ ! $cur_mode == 0 ]]; then
-		export cur_mode=0
+	elif [[ "$1" == "0" ]] && [[ ! "$cur_mode" == "0" ]]; then
+		export cur_mode="0"
 		normal_mode
 	fi
 }
@@ -181,25 +221,22 @@ perf_common() {
 	while [ $cpu -lt $cpu_cores ]; do
 		cpu_dir="/sys/devices/system/cpu/cpu${cpu}"
 		if [ -d "$cpu_dir" ]; then
-			echo 1 >${cpu_dir}/online
+			echo 1 > ${cpu_dir}/online
 			chmod 0644 "${cpu_dir}/cpufreq/scaling_governor"
 			chmod 000 "${cpu_dir}/cpufreq/cpuinfo_max_freq"
 			chmod 000 "${cpu_dir}/cpu_capacity"
 			chmod 000 "${cpu_dir}/topology/physical_package_id"
 		fi
-		cpu=$((cpu + 1))
+		cpu="$((cpu + 1))"
 	done
 
 	# Networking tweaks
-	echo "cubic" >/proc/sys/net/ipv4/tcp_congestion_control
-	echo 1 >/proc/sys/net/ipv4/tcp_low_latency
-	echo 1 >/proc/sys/net/ipv4/tcp_ecn
-	echo 3 >/proc/sys/net/ipv4/tcp_fastopen
-	echo 1 >/proc/sys/net/ipv4/tcp_sack
-	echo 0 >/proc/sys/net/ipv4/tcp_timestamps
-
-	# Touchpanel
-	write_val 1 /proc/touchpanel/oplus_tp_direction
+	echo "cubic" > /proc/sys/net/ipv4/tcp_congestion_control
+	echo "1" > /proc/sys/net/ipv4/tcp_low_latency
+	echo "1" > /proc/sys/net/ipv4/tcp_ecn
+	echo "3" > /proc/sys/net/ipv4/tcp_fastopen
+	echo "1" > /proc/sys/net/ipv4/tcp_sack
+	echo "0" > /proc/sys/net/ipv4/tcp_timestamps
 
 	# Disable ccci debugging
 	write_val 0 /sys/kernel/ccci/debug
@@ -223,7 +260,7 @@ perfmon() {
 		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
 		screenoff=$(echo "$window" | grep mScreen | grep -Eo "false" | tail -n 1)
 		if [[ $gamestart == *.* ]] && [[ ! $screenoff == "false" ]]; then
-			pid=$(pidof $gamestart)
+			pid="$(pidof $gamestart)"
 			apply_mode 1 # Apply performance mode
 		else
 			apply_mode 0 # Apply normal mode
