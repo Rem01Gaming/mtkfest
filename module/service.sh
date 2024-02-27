@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/data/adb/magisk/busybox sh
 while [ -z "$(getprop sys.boot_completed)" ]; do
     sleep 15
 done
