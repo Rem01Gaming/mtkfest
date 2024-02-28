@@ -100,6 +100,9 @@ performance_mode() {
 		echo "0" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
 
+	# Drop mem cache
+	echo "3" >/proc/sys/vm/drop_caches
+
 	# Mediatek's APU freq
 	write_val "0" /sys/module/mmdvfs_pmqos/parameters/force_step
 
@@ -164,6 +167,9 @@ normal_mode() {
 	else
 		echo "-1" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	fi
+
+	# Drop mem cache
+	echo "1" >/proc/sys/vm/drop_caches
 
 	# Mediatek's APU freq
 	write_val "-1" /sys/module/mmdvfs_pmqos/parameters/force_step
