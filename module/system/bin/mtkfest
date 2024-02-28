@@ -241,8 +241,9 @@ perf_common() {
 		done
 	fi
 
-	# Disable printk logging
+	# minimize printk logging
 	lock_val "0 0 0 0" >/proc/sys/kernel/printk
+	lock_val "0" >/sys/kernel/tracing/options/trace_printk
 
 	# Push notification
 	su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"MTKFEST\" "Tag$(date +%s)" \"Tweaks applied successfully\""
