@@ -194,7 +194,7 @@ apply_mode() {
 	if [[ "$1" == "1" ]] && [[ ! "$cur_mode" == "1" ]]; then
 		export cur_mode="1"
 		renice -n -20 -p $pid
-		ionice -c 2 -n 0 -p $pid
+		ionice -c 1 -n 0 -p $pid
 		/system/bin/am start -a android.intent.action.MAIN -e toasttext "Boosting game $gamestart" -n bellavita.toast/.MainActivity
 		performance_mode
 	elif [[ "$1" == "2" ]] && [[ ! "$cur_mode" == "2" ]]; then
@@ -254,7 +254,7 @@ perfmon() {
 		window=$(dumpsys window)
 		gamestart=$(echo "$window" | grep -E 'mCurrentFocus|mFocusedApp' | grep -Eo "$game_list_filter" | tail -n 1)
 		screenoff=$(echo "$window" | grep mScreen | grep -Eo "false" | tail -n 1)
-		if [[ $gamestart == *.* ]] && [[ ! $screenoff == "false" ]]; then
+		if [[ ! -z "$gamestart" ]] && [[ ! "$screenoff" == "false" ]]; then
 			pid="$(pidof $gamestart)"
 			apply_mode 1 # Apply performance mode
 		elif [[ "$(settings get global low_power_sticky)" == "1" ]]; then
