@@ -38,8 +38,14 @@ unzip -o "$ZIPFILE" 'system/*' -d $MODPATH >&2
 unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
 unzip -o "$ZIPFILE" 'gamelist.txt' -d "/data/mtkfest" >&2
 
+if pm list packages | grep -q bellavita.toast; then
+ui_print "- The Bellavita Toast app is already installed, so doesn't need to install it again."
+else
+ui_print "- Bellavita Toast isn't installed"
 ui_print "- Installing bellavita toast"
 unzip -o "$ZIPFILE" 'toast.apk' -d $MODPATH >&2
 pm install $MODPATH/toast.apk
-rm $MODPATH/toast.apk
+rm -f $MODPATH/toast.apk
+fi
+
 set_perm_recursive $MODPATH 0 0 0777 0777
