@@ -188,6 +188,9 @@ powersave_mode() {
 
 	# CPU Power mode to low power
 	write_val "1" /proc/cpufreq/cpufreq_power_mode
+	
+	# Disable PPM (this is fire dumpster)
+	write_val "0" /proc/ppm/enabled
 }
 
 apply_mode() {
