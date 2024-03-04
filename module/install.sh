@@ -26,10 +26,6 @@ if [[ ! $chipset == *MT* ]] && [[ ! $chipset == *mt* ]]; then
 	abort "[-] This tweak is only for Mediatek devices, Aborted."
 fi
 
-if [[ ! $(uname -m) == "aarch64" ]]; then
-	abort "[-] This module only supports aarch64 architecture, Aborted."
-fi
-
 sleep 1
 
 ui_print "- Extracting module files"
