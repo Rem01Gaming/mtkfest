@@ -17,6 +17,9 @@
 # Copyright (C) 2024 Rem01Gaming
 
 cpu_cores="$(($(nproc --all) - 1))"
+data_dir="/data/mtkfest"
+VERSION="v1.0.2"
+LINE=$(stty size | awk '{print $2}')
 game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/mtkfest/gamelist.txt")"
 
 case $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors) in
@@ -25,6 +28,10 @@ case $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors) in
 *"walt"*) export default_cpu_gov="walt" ;;
 *) export default_cpu_gov="schedutil" ;;
 esac
+
+clear() {
+	echo -e "\033[H\033[2J\033[3J" # tput clear
+}
 
 write_val() {
 	if [ -f $2 ]; then
@@ -63,10 +70,14 @@ performance_mode() {
 	write_val "3" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	lock_val "0" /sys/devices/system/cpu/eas/enable
+	if [[ $(cat ${data_dir}/scheduler_switch_enabled) == 1 ]]; then
+		lock_val "0" /sys/devices/system/cpu/eas/enable
+	fi
 
 	# Idle charging
-	write_val "0 1" /proc/mtk_battery_cmd/current_cmd
+	if [[ $(cat ${data_dir}/idle_charging_enabled) == 1 ]]; then
+		write_val "0 1" /proc/mtk_battery_cmd/current_cmd
+	fi
 
 	# Disable PPM (this is fire dumpster)
 	write_val "0" /proc/ppm/enabled
@@ -101,10 +112,14 @@ performance_mode() {
 	fi
 
 	# Drop mem cache
-	echo "3" >/proc/sys/vm/drop_caches
+	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
+		echo "3" >/proc/sys/vm/drop_caches
+	fi
 
 	# Mediatek's APU freq
-	write_val "0" /sys/module/mmdvfs_pmqos/parameters/force_step
+	if [[ $(cat ${data_dir}/apu_freq_lock) == 1 ]]; then
+		write_val "0" /sys/module/mmdvfs_pmqos/parameters/force_step
+	fi
 
 	# Touchpanel
 	tp_path="/proc/touchpanel"
@@ -127,7 +142,9 @@ normal_mode() {
 	done
 
 	# Idle charging
-	write_val "0 0" /proc/mtk_battery_cmd/current_cmd
+	if [[ $(cat ${data_dir}/idle_charging_enabled) == 1 ]]; then
+		write_val "0 0" /proc/mtk_battery_cmd/current_cmd
+	fi
 
 	# Enable back PPM
 	write_val "1" /proc/ppm/enabled
@@ -137,7 +154,9 @@ normal_mode() {
 	write_val "0" /proc/cpufreq/cpufreq_power_mode
 
 	# EAS/HMP Switch
-	lock_val "1" /sys/devices/system/cpu/eas/enable
+	if [[ $(cat ${data_dir}/scheduler_switch_enabled) == 1 ]]; then
+		lock_val "1" /sys/devices/system/cpu/eas/enable
+	fi
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -169,10 +188,14 @@ normal_mode() {
 	fi
 
 	# Drop mem cache
-	echo "1" >/proc/sys/vm/drop_caches
+	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
+		echo "1" >/proc/sys/vm/drop_caches
+	fi
 
 	# Mediatek's APU freq
-	write_val "-1" /sys/module/mmdvfs_pmqos/parameters/force_step
+	if [[ $(cat ${data_dir}/apu_freq_lock) == 1 ]]; then
+		write_val "-1" /sys/module/mmdvfs_pmqos/parameters/force_step
+	fi
 
 	# Touchpanel
 	tp_path="/proc/touchpanel"
@@ -188,9 +211,6 @@ powersave_mode() {
 
 	# CPU Power mode to low power
 	write_val "1" /proc/cpufreq/cpufreq_power_mode
-
-	# Disable PPM (this is fire dumpster)
-	write_val "0" /proc/ppm/enabled
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -279,10 +299,80 @@ perfmon() {
 	done
 }
 
+menu_value_tune() {
+	echo -e "\n${1}" | fold -s -w ${LINE}
+	echo -e "\nUse ( ↑ ↓ ) to enable or disable feature (1 = enable | 0 = disable)\nUse HOME or END to exit\n"
+
+	number=$(cat ${2})
+
+	print_number() {
+		printf "\r%s%s\033[K" "value: " "$number   "
+	}
+
+	while true; do
+		print_number
+		read -r -sN3 t
+		case "${t}" in
+		*A*)
+			if ((number <1)); then
+				((number += 1))
+			fi
+			;;
+		*B*)
+			if ((number >0)); then
+				((number -= 1))
+			fi
+			;;
+		*) break ;;
+		esac
+
+		echo $number >${2} 2>/dev/null
+	done
+}
+
+mtkfest_menu() {
+	while true; do
+		clear
+		echo -e "\e[30;48;2;254;228;208;38;2;0;0;0m MTKFEST Tweak ${VERSION}$(yes " " | sed $((LINE - 21))'q' | tr -d '\n')\033[0m"
+		echo -e "\e[38;2;254;228;208m"
+		echo -e "    _________      [] Scheduler switch: $(cat ${data_dir}/scheduler_switch_enabled)"
+		echo -e "   /        /\\     [ϟ] Idle Charging: $(cat ${data_dir}/idle_charging_enabled)"
+		echo -e "  /        /  \\    [] Memory Cache drop: $(cat ${data_dir}/drop_cache_enabled)"
+		echo -e " /        /    \\   [] APUs frequency lock: $(cat ${data_dir}/apu_freq_lock)"
+		echo -e "/________/      \\  "
+		echo -e "\\        \\      /  "
+		echo -e " \\        \\    /   "
+		echo -e "  \\        \\  /    "
+		echo -e "   \\________\\/     "
+		echo -e "\n//////////////"
+		echo -e "$(yes "─" | sed ${LINE}'q' | tr -d '\n')\n"
+		echo -e "[] MTKFEST Tweak Menu\033[0m\n"
+
+		echo -e "1. Enable Scheduler switch\n2. Enable Idle Charging\n3. Enable Memory Cache drop\n4. APUs frequency lock\n5. Exit\n"
+		echo "Select the number: "
+		read selected_prompt
+		clear
+
+		case $selected_prompt in
+		1) menu_value_tune "Mediatek Scheduler switch\nAutomaticly switches scheduler to EAS/HMP/Hybrid according to mode, maybe not compatible with your kernel." "${data_dir}/scheduler_switch_enabled" ;;
+		2) menu_value_tune "Enable Idle charging\nPassthrough power from charger to hardware without touching the battery while playing games." "${data_dir}/idle_charging_enabled" ;;
+		3) menu_value_tune "Drop Memory cache\nCan help devices with low memory volume, can causes some trouble." "$(cat ${data_dir}/drop_cache_enabled)" ;;
+		4) menu_value_tune "APUs frequency lock\nLock APUs to highest frequency while playing games, you maybe not need this." "${data_dir}/apu_freq_lock" ;;
+		5) break ;;
+		esac
+
+		clear
+	done
+}
+
 case $1 in
-"-u") wget -O /data/mtkfest/gamelist.txt https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt ;;
-*)
+"-u")
+	curl -o /data/mtkfest/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
+	echo -e "\n\e[30;48;2;254;228;208;38;2;0;0;0m[*] Reboot is needed for applying new gamelist\033[0m"
+	;;
+"-s")
 	perf_common
 	perfmon # Start monitoring for games
 	;;
+*) mtkfest_menu ;;
 esac

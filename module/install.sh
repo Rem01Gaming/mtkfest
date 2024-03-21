@@ -33,6 +33,10 @@ mkdir /data/mtkfest
 unzip -o "$ZIPFILE" 'system/*' -d $MODPATH >&2
 unzip -o "$ZIPFILE" 'service.sh' -d "$MODPATH" >&2
 unzip -o "$ZIPFILE" 'gamelist.txt' -d "/data/mtkfest" >&2
+echo 0 >/data/mtkfest/apu_freq_lock
+echo 0 >/data/mtkfest/drop_cache_enabled
+echo 0 >/data/mtkfest/idle_charging_enabled
+echo 0 >/data/mtkfest/scheduler_switch_enabled
 
 if pm list packages | grep -q bellavita.toast; then
 ui_print "- The Bellavita Toast app is already installed, so doesn't need to install it again."
