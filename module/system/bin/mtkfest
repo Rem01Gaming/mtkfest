@@ -300,7 +300,7 @@ perfmon() {
 }
 
 menu_value_tune() {
-	echo -e "\n${1}" | fold -s -w ${LINE}
+	echo -e "\n${1}"
 	echo -e "\nUse ( ↑ ↓ ) to enable or disable feature (1 = enable | 0 = disable)\nUse HOME or END to exit\n"
 
 	number=$(cat ${2})
