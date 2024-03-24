@@ -368,7 +368,7 @@ mtkfest_menu() {
 case $1 in
 "-u")
 	curl -o /data/mtkfest/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
-	echo -e "\n\e[30;48;2;254;228;208;38;2;0;0;0m[*] Reboot is needed for applying new gamelist\033[0m"
+	echo -e "\n\e[38;2;254;228;208m[*] Reboot is needed for applying new gamelist\033[0m"
 	;;
 "-s")
 	perf_common
