@@ -105,11 +105,10 @@ performance_mode() {
 	write_val "stop 1" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
-	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		echo "0" >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	else
-		echo "0" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	fi
+	write_val "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	write_val "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	write_val "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    write_val "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# Drop mem cache
 	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
@@ -181,11 +180,10 @@ normal_mode() {
 	write_val "stop 0" /proc/mtk_batoc_throttling/battery_oc_protect_stop
 
 	# DRAM Frequency
-	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
-		echo "-1" >/sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
-	else
-		echo "-1" >/sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
-	fi
+	write_val "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	write_val "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	write_val "simple_ondemand" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    write_val "simple_ondemand" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# Drop mem cache
 	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
@@ -211,6 +209,12 @@ powersave_mode() {
 
 	# CPU Power mode to low power
 	write_val "1" /proc/cpufreq/cpufreq_power_mode
+	
+	# DRAM frequency
+	write_val "$(cat /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_opp_table | grep -o '\[[^]]*\]' | grep -oE '[+-]?[0-9]+' | sort -nr | head -n 1)" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
+	write_val "$(cat /sys/kernel/helio-dvfsrc/dvfsrc_opp_table | grep -o '\[[^]]*\]' | grep -oE '[+-]?[0-9]+' | sort -nr | head -n 1)" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
+	write_val "powersave" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
+    write_val "powersave" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
