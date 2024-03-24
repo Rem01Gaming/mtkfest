@@ -108,7 +108,7 @@ performance_mode() {
 	write_val "0" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	write_val "0" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	write_val "performance" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-    write_val "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+	write_val "performance" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# Drop mem cache
 	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
@@ -183,7 +183,7 @@ normal_mode() {
 	write_val "-1" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	write_val "-1" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	write_val "simple_ondemand" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-    write_val "simple_ondemand" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+	write_val "simple_ondemand" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# Drop mem cache
 	if [[ $(cat ${data_dir}/drop_cache_enabled) == 1 ]]; then
@@ -209,12 +209,12 @@ powersave_mode() {
 
 	# CPU Power mode to low power
 	write_val "1" /proc/cpufreq/cpufreq_power_mode
-	
+
 	# DRAM frequency
 	write_val "$(cat /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_opp_table | grep -o '\[[^]]*\]' | grep -oE '[+-]?[0-9]+' | sort -nr | head -n 1)" /sys/devices/platform/10012000.dvfsrc/helio-dvfsrc/dvfsrc_req_ddr_opp
 	write_val "$(cat /sys/kernel/helio-dvfsrc/dvfsrc_opp_table | grep -o '\[[^]]*\]' | grep -oE '[+-]?[0-9]+' | sort -nr | head -n 1)" /sys/kernel/helio-dvfsrc/dvfsrc_force_vcore_dvfs_opp
 	write_val "powersave" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
-    write_val "powersave" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
+	write_val "powersave" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
@@ -318,13 +318,13 @@ menu_value_tune() {
 		read -r -sN3 t
 		case "${t}" in
 		*A*)
-			if ((number <1)); then
-				((number += 1))
+			if ( (number <1)); then
+				( (number += 1))
 			fi
 			;;
 		*B*)
-			if ((number >0)); then
-				((number -= 1))
+			if ( (number >0)); then
+				( (number -= 1))
 			fi
 			;;
 		*) break ;;
@@ -352,7 +352,7 @@ mtkfest_menu() {
 		echo -e "$(yes "─" | sed ${LINE}'q' | tr -d '\n')\n"
 		echo -e "[] MTKFEST Tweak Menu\033[0m\n"
 
-		echo -e "1. Enable Scheduler switch\n2. Enable Idle Charging\n3. Enable Memory Cache drop\n4. APUs frequency lock\n5. Exit\n"
+		echo -e "1. Enable Scheduler switch\n2. Enable Idle Charging\n3. Enable Memory Cache drop\n4. APUs frequency lock\n5. Update gamelist from cloud\n6. Exit\n"
 		echo "Select the number: "
 		read selected_prompt
 		clear
@@ -362,7 +362,16 @@ mtkfest_menu() {
 		2) menu_value_tune "Enable Idle charging\nPassthrough power from charger to hardware without touching the battery while playing games." "${data_dir}/idle_charging_enabled" ;;
 		3) menu_value_tune "Drop Memory cache\nCan help devices with low memory volume, can causes some trouble." "$(cat ${data_dir}/drop_cache_enabled)" ;;
 		4) menu_value_tune "APUs frequency lock\nLock APUs to highest frequency while playing games, you maybe not need this." "${data_dir}/apu_freq_lock" ;;
-		5) break ;;
+		5)
+			clear
+			echo "[*] Downloading gamelist.txt from Gits..."
+			if ! hash curl 2>/dev/null; then
+				echo "[-] 'curl' not found, Aborting..." && exit 0
+			fi
+			curl -o /data/mtkfest/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
+			echo "[*] Reboot is needed for applying new gamelist"
+			;;
+		6) break ;;
 		esac
 
 		clear
@@ -370,10 +379,6 @@ mtkfest_menu() {
 }
 
 case $1 in
-"-u")
-	curl -o /data/mtkfest/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
-	echo -e "\n\e[38;2;254;228;208m[*] Reboot is needed for applying new gamelist\033[0m"
-	;;
 "-s")
 	perf_common
 	perfmon # Start monitoring for games
