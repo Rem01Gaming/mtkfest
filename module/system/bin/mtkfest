@@ -20,7 +20,33 @@ cpu_cores="$(($(nproc --all) - 1))"
 data_dir="/data/mtkfest"
 VERSION="v1.0.2"
 LINE=$(stty size | awk '{print $2}')
-game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "/data/mtkfest/gamelist.txt")"
+
+if [ ! -f ${data_dir}/gamelist.txt ]; then
+	su -lp 2000 -c "/system/bin/cmd notification post -S bigtext -t \"MTKFEST\" "Tag$(date +%s)" \"error: Can't find gamelist, tweak can't be started properly.\""
+	exit 1
+fi
+
+if [ ! -f ${data_dir}/scheduler_switch_enabled ]; then
+	touch ${data_dir}/scheduler_switch_enabled
+	echo 0 >${data_dir}/scheduler_switch_enabled
+fi
+
+if [ ! -f ${data_dir}/idle_charging_enabled ]; then
+	touch ${data_dir}/idle_charging_enabled
+	echo 0 >${data_dir}/idle_charging_enabled
+fi
+
+if [ ! -f ${data_dir}/drop_cache_enabled ]; then
+	touch ${data_dir}/drop_cache_enabled
+	echo 0 >${data_dir}/drop_cache_enabled
+fi
+
+if [ ! -f ${data_dir}/apu_freq_lock ]; then
+	touch ${data_dir}/apu_freq_lock
+	echo 0 >${data_dir}/apu_freq_lock
+fi
+
+game_list_filter="com.example.gamelist1|com.example.gamelist2$(awk '!/^[[:space:]]*$/ && !/^#/ && !(/[[:alnum:]]+[[:space:]]+[[:alnum:]]+[[:space:]]+[[:alnum:]]+/) {sub("-e ", ""); printf "|%s", $0}' "${data_dir}/gamelist.txt")"
 
 case $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors) in
 *"schedplus"*) export default_cpu_gov="schedplus" ;;
