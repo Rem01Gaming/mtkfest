@@ -155,7 +155,7 @@ performance_mode() {
 	write_val "1" $tp_path/oppo_tp_direction
 	
 	# Eara Thermal
-	write_val "1" /sys/kernel/eara_thermal/enable
+	write_val "0" /sys/kernel/eara_thermal/enable
 }
 
 normal_mode() {
