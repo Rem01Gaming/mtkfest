@@ -153,6 +153,9 @@ performance_mode() {
 	write_val "0" $tp_path/oppo_tp_limit_enable
 	write_val "1" $tp_path/oplus_tp_direction
 	write_val "1" $tp_path/oppo_tp_direction
+	
+	# Eara Thermal
+	write_val "1" /sys/kernel/eara_thermal/enable
 }
 
 normal_mode() {
@@ -228,6 +231,9 @@ normal_mode() {
 	write_val "1" $tp_path/oppo_tp_limit_enable
 	write_val "0" $tp_path/oplus_tp_direction
 	write_val "0" $tp_path/oppo_tp_direction
+	
+	# Eara Thermal
+	write_val "1" /sys/kernel/eara_thermal/enable
 }
 
 powersave_mode() {
@@ -399,10 +405,10 @@ mtkfest_menu() {
 			if ! hash curl 2>/dev/null; then
 				echo "[-] 'curl' not found, Aborting..." && exit 0
 			fi
-			curl -o /data/mtkfest/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
+			curl -o ${data_dir}/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
 			echo "[*] Reboot is needed for applying new gamelist"
 			;;
-		6) break ;;
+		6) clear && break ;;
 		esac
 
 		clear
