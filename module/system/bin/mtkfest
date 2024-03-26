@@ -216,6 +216,11 @@ powersave_mode() {
 	write_val "powersave" /sys/class/devfreq/mtk-dvfsrc-devfreq/governor
 	write_val "powersave" /sys/devices/platform/soc/1c00f000.dvfsrc/mtk-dvfsrc-devfreq/devfreq/mtk-dvfsrc-devfreq/governor
 
+	# Mediatek's APU freq
+	if [[ $(cat ${data_dir}/apu_freq_lock) == 1 ]]; then
+		write_val "$(cat /sys/module/mmdvfs_pmqos/parameters/dump_setting | grep -o '\[[^]]*\]' | grep -oE '[+-]?[0-9]+' | sort -n | tail -n 1)" /sys/module/mmdvfs_pmqos/parameters/force_step
+	fi
+
 	# GPU Frequency
 	if [ ! $(uname -r | cut -d'.' -f1,2 | sed 's/\.//') -gt 500 ]; then
 		gpu_freq="$(cat /proc/gpufreq/gpufreq_opp_dump | grep -o 'freq = [0-9]*' | sed 's/freq = //' | sort -n | head -n 1)"
