@@ -355,13 +355,13 @@ menu_value_tune() {
 		read -r -sN3 t
 		case "${t}" in
 		*A*)
-			if ( (number <1)); then
-				( (number += 1))
+			if ((number <1)); then
+				((number += 1))
 			fi
 			;;
 		*B*)
-			if ( (number >0)); then
-				( (number -= 1))
+			if ((number >0)); then
+				((number -= 1))
 			fi
 			;;
 		*) break ;;
@@ -397,7 +397,7 @@ mtkfest_menu() {
 		case $selected_prompt in
 		1) menu_value_tune "Mediatek Scheduler switch\nAutomaticly switches scheduler to EAS/HMP/Hybrid according to mode, maybe not compatible with your kernel." "${data_dir}/scheduler_switch_enabled" ;;
 		2) menu_value_tune "Enable Idle charging\nPassthrough power from charger to hardware without touching the battery while playing games." "${data_dir}/idle_charging_enabled" ;;
-		3) menu_value_tune "Drop Memory cache\nCan help devices with low memory volume, can causes some trouble." "$(cat ${data_dir}/drop_cache_enabled)" ;;
+		3) menu_value_tune "Drop Memory cache\nCan help devices with low memory volume, can causes some trouble." "${data_dir}/drop_cache_enabled" ;;
 		4) menu_value_tune "APUs frequency lock\nLock APUs to highest frequency while playing games, you maybe not need this." "${data_dir}/apu_freq_lock" ;;
 		5)
 			clear
@@ -407,6 +407,7 @@ mtkfest_menu() {
 			fi
 			curl -o ${data_dir}/gamelist.txt -L https://gist.github.com/Rem01Gaming/02f2cf5c67119b361e6a6349392845bf/raw/gamelist.txt
 			echo "[*] Reboot is needed for applying new gamelist"
+			exit 0
 			;;
 		6) clear && break ;;
 		esac
