@@ -18,7 +18,7 @@
 
 cpu_cores="$(($(nproc --all) - 1))"
 data_dir="/data/mtkfest"
-VERSION="v1.0.2"
+VERSION="v1.0.3"
 LINE=$(stty size | awk '{print $2}')
 
 if [ ! -f ${data_dir}/gamelist.txt ]; then
