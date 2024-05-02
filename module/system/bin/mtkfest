@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/system/xbin/busybox sh
 # This file is part of Mtkfest.
 #
 # Mtkfest is free software: you can redistribute it and/or modify
